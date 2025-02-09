@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Line Art</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: black;
+        }
+        
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        canvas {
+            max-width: 100%;
+            max-height: 100vh;
+            object-fit: contain;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        canvas.loaded {
+            opacity: 1;
+        }
+        
+        @media (orientation: portrait) {
+            canvas {
+                width: 100%;
+                height: auto;
+            }
+        }
+        
+        @media (orientation: landscape) {
+            canvas {
+                height: 100vh;
+                width: auto;
+            }
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 50px;
+            transition: opacity 0.5s ease;
+        }
+
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .heartbeat {
+            stroke: white;
+            stroke-width: 2;
+            fill: none;
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: dash 2s linear infinite;
+        }
+
+        @keyframes dash {
+            0% {
+                stroke-dashoffset: 1000;
+            }
+            15% {
+                stroke-dashoffset: 900;
+            }
+            25% {
+                stroke-dashoffset: 800;
+            }
+            30% {
+                stroke-dashoffset: 400;
+            }
+            35% {
+                stroke-dashoffset: 200;
+            }
+            40% {
+                stroke-dashoffset: 0;
+            }
+            100% {
+                stroke-dashoffset: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="artCanvas"></canvas>
+    <div id="loading">
+        <svg viewBox="0 0 100 50">
+            <path class="heartbeat" d="M 0,25 L 20,25 L 25,10 L 30,40 L 35,25 L 40,25 L 45,20 L 50,30 L 55,25 L 60,25 L 65,10 L 70,40 L 75,25 L 100,25" />
+        </svg>
+    </div>
+
+    <script>
+        let canvas, ctx;
+        let points = [];
+        let currentPoint = 0;
+        let animationId = null;
+        let lastTime = 0;
+        const pointsPerFrame = 2;
+        let drawingSurface;
+        
+        function resizeCanvas() {
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            const windowRatio = windowWidth / windowHeight;
+            const canvasRatio = canvas.width / canvas.height;
+            
+            if (windowRatio > canvasRatio) {
+                canvas.style.height = windowHeight + 'px';
+                canvas.style.width = 'auto';
+            } else {
+                canvas.style.width = windowWidth + 'px';
+                canvas.style.height = 'auto';
+            }
+        }
+        
+        // Initialize canvas
+        canvas = document.getElementById('artCanvas');
+        ctx = canvas.getContext('2d');
+        
+        // Handle window resize
+        window.addEventListener('resize', resizeCanvas);
+        
+        function startAnimation() {
+            if (!animationId) {
+                currentPoint = 0;
+                ctx.fillStyle = 'black';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                drawingSurface = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+        
+        // Fetch points from server and start animation automatically
+        fetch('/process_image', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+            
+            // Set canvas size
+            canvas.width = data.width;
+            canvas.height = data.height;
+            
+            // Initial resize
+            resizeCanvas();
+            
+            // Store points
+            points = data.points;
+            
+            // Hide loading and show canvas
+            document.getElementById('loading').classList.add('hidden');
+            canvas.classList.add('loaded');
+            
+            // Start animation automatically
+            startAnimation();
+        })
+        .catch(error => console.error('Error:', error));
+        
+        function drawLine(start, end) {
+            ctx.beginPath();
+            ctx.moveTo(start[0], start[1]);
+            ctx.lineTo(end[0], end[1]);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // Save the line to the drawing surface
+            drawingSurface = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
+        
+        function animate(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const elapsed = timestamp - lastTime;
+            
+            if (elapsed > 1000 / 60) { // 60 FPS
+                // Restore the previous drawing
+                ctx.putImageData(drawingSurface, 0, 0);
+                
+                for (let i = 0; i < pointsPerFrame; i++) {
+                    if (currentPoint < points.length - 1) {
+                        const start = points[currentPoint];
+                        const end = points[currentPoint + 1];
+                        drawLine(start, end);
+                        currentPoint++;
+                    } else {
+                        cancelAnimationFrame(animationId);
+                        animationId = null;
+                        return;
+                    }
+                }
+                lastTime = timestamp;
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // Handle clicks for reset
+        canvas.addEventListener('click', () => {
+            cancelAnimationFrame(animationId);
+            startAnimation();
+        });
+    </script>
+</body>
+</html>
