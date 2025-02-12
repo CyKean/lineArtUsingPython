@@ -1,29 +1,46 @@
-# Line Art Animator
+# Line Art Animation Project
 
-This Python script creates an animated line art drawing from an input image. The animation shows a single continuous line being drawn to create a portrait-like representation of the input image.
+## Deployment on Render
 
-## Requirements
+This project is a Line Art Animation web application built with Flask and deployed on Render.
 
-Install the required packages using:
-```bash
-pip install -r requirements.txt
-```
+### Prerequisites
 
-## Usage
+- Python 3.8+
+- Flask
+- OpenCV
+- NumPy
+- SciPy
+- Pygame
 
-1. Place your input image in the same directory as the script
-2. Update the image path in `line_art_animator.py`:
-   ```python
-   animator = LineArtAnimator("your_image.jpg")
+### Local Development
+
+1. Clone the repository
+2. Install dependencies:
    ```
-3. Run the script:
-   ```bash
-   python line_art_animator.py
+   pip install -r requirements.txt
+   ```
+3. Run the application:
+   ```
+   python app.py
    ```
 
-## Controls
-- Press ESC to exit the animation
-- Close the window to stop the animation
+### Deployment Steps
 
-## How it works
-The script uses OpenCV to detect edges in the input image and then creates a continuous line by connecting these edge points. The animation shows this line being drawn progressively, creating an artistic effect.
+1. Create a Render account at [render.com](https://render.com)
+2. Connect your GitHub repository
+3. Create a new Web Service
+4. Select Python as the runtime
+5. Set the following build settings:
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `gunicorn app:app`
+
+### Troubleshooting
+
+- Ensure all dependencies are in `requirements.txt`
+- Use `opencv-python-headless` for deployment
+- Check Render logs for any deployment issues
+
+### License
+
+[Add your license information here]
