@@ -108,119 +108,32 @@
     </div>
 
     <script>
-        let canvas, ctx;
-        let points = [];
-        let currentPoint = 0;
-        let animationId = null;
-        let lastTime = 0;
-        const pointsPerFrame = 2;
-        let drawingSurface;
-        
-        function resizeCanvas() {
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-            const windowRatio = windowWidth / windowHeight;
-            const canvasRatio = canvas.width / canvas.height;
-            
-            if (windowRatio > canvasRatio) {
-                canvas.style.height = windowHeight + 'px';
-                canvas.style.width = 'auto';
-            } else {
-                canvas.style.width = windowWidth + 'px';
-                canvas.style.height = 'auto';
-            }
-        }
-        
-        // Initialize canvas
-        canvas = document.getElementById('artCanvas');
-        ctx = canvas.getContext('2d');
-        
-        // Handle window resize
-        window.addEventListener('resize', resizeCanvas);
-        
-        function startAnimation() {
-            if (!animationId) {
-                currentPoint = 0;
-                ctx.fillStyle = 'black';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                drawingSurface = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                animationId = requestAnimationFrame(animate);
-            }
-        }
-        
-        // Fetch points from server and start animation automatically
+       // Add this to your fetch request
         fetch('/process_image', {
             method: 'POST'
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.error) {
-                console.error(data.error);
+                showError(data.error);
                 return;
             }
-            
-            // Set canvas size
-            canvas.width = data.width;
-            canvas.height = data.height;
-            
-            // Initial resize
-            resizeCanvas();
-            
-            // Store points
-            points = data.points;
-            
-            // Hide loading and show canvas
-            document.getElementById('loading').classList.add('hidden');
-            canvas.classList.add('loaded');
-            
-            // Start animation automatically
-            startAnimation();
+            // ... rest of your code
         })
-        .catch(error => console.error('Error:', error));
-        
-        function drawLine(start, end) {
-            ctx.beginPath();
-            ctx.moveTo(start[0], start[1]);
-            ctx.lineTo(end[0], end[1]);
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-            
-            // Save the line to the drawing surface
-            drawingSurface = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        }
-        
-        function animate(timestamp) {
-            if (!lastTime) lastTime = timestamp;
-            const elapsed = timestamp - lastTime;
-            
-            if (elapsed > 1000 / 60) { // 60 FPS
-                // Restore the previous drawing
-                ctx.putImageData(drawingSurface, 0, 0);
-                
-                for (let i = 0; i < pointsPerFrame; i++) {
-                    if (currentPoint < points.length - 1) {
-                        const start = points[currentPoint];
-                        const end = points[currentPoint + 1];
-                        drawLine(start, end);
-                        currentPoint++;
-                    } else {
-                        cancelAnimationFrame(animationId);
-                        animationId = null;
-                        return;
-                    }
-                }
-                lastTime = timestamp;
-            }
-            
-            animationId = requestAnimationFrame(animate);
-        }
-        
-        // Handle clicks for reset
-        canvas.addEventListener('click', () => {
-            cancelAnimationFrame(animationId);
-            startAnimation();
+        .catch(error => {
+            showError(error.message);
         });
+
+        function showError(message) {
+            const loading = document.getElementById('loading');
+            loading.innerHTML = `<div class="error">${message}</div>`;
+            loading.classList.remove('hidden');
+        }
     </script>
 </body>
 </html>
